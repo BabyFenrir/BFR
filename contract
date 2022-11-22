@@ -101,11 +101,11 @@ abstract contract Context {
     }
 }
 
-// File: contracts/IUniswapV3Router01.sol
+// File: contracts/IUniswapV2Router01.sol
 
 pragma solidity >=0.6.2;
 
-interface IUniswapV3Router01 {
+interface IUniswapV2Router01 {
     function factory() external pure returns (address);
     function WETH() external pure returns (address);
 
@@ -198,12 +198,12 @@ interface IUniswapV3Router01 {
     function getAmountsOut(uint amountIn, address[] calldata path) external view returns (uint[] memory amounts);
     function getAmountsIn(uint amountOut, address[] calldata path) external view returns (uint[] memory amounts);
 }
-// File: contracts/IUniswapV3Router02.sol
+// File: contracts/IUniswapV2Router02.sol
 
 pragma solidity >=0.6.2;
 
 
-interface IUniswapV3Router02 is IUniswapV3Router01 {
+interface IUniswapV2Router02 is IUniswapV2Router01 {
     function removeLiquidityETHSupportingFeeOnTransferTokens(
         address token,
         uint liquidity,
@@ -243,11 +243,11 @@ interface IUniswapV3Router02 is IUniswapV3Router01 {
         uint deadline
     ) external;
 }
-// File: contracts/IUniswapV3Factory.sol
+// File: contracts/IUniswapV2Factory.sol
 
 pragma solidity >=0.5.0;
 
-interface IUniswapV3Factory {
+interface IUniswapV2Factory {
     event PairCreated(address indexed token0, address indexed token1, address pair, uint);
 
     function feeTo() external view returns (address);
@@ -262,11 +262,11 @@ interface IUniswapV3Factory {
     function setFeeTo(address) external;
     function setFeeToSetter(address) external;
 }
-// File: contracts/IUniswapV3Pair.sol
+// File: contracts/IUniswapV2Pair.sol
 
 pragma solidity >=0.5.0;
 
-interface IUniswapV3Pair {
+interface IUniswapV2Pair {
     event Approval(address indexed owner, address indexed spender, uint value);
     event Transfer(address indexed from, address indexed to, uint value);
 
@@ -1115,7 +1115,7 @@ contract DividendPayingToken is ERC20, IDividendPayingToken, IDividendPayingToke
   uint256 internal lastAmount;
   
   address public DividendToken = address(0);
-  IUniswapV3Router02 public uniswapV3Router;
+  IUniswapV2Router02 public uniswapv2Router;
 
   address public masterContract;
 
@@ -1142,8 +1142,8 @@ contract DividendPayingToken is ERC20, IDividendPayingToken, IDividendPayingToke
   uint256 public totalDividendsDistributed;
 
   constructor(string memory _name, string memory _symbol) public ERC20(_name, _symbol) {
-        IUniswapV3Router02 _uniswapV3Router = IUniswapV3Router02(0xE592427A0AEce92De3Edee1F18E0157C05861564);
-        uniswapV3Router = _uniswapV3Router;
+        IUniswapV2Router02 _uniswapv2Router = IUniswapV2Router02(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
+        uniswapv2Router = _uniswapv2Router;
         masterContract = msg.sender;
   }
   
@@ -1156,8 +1156,8 @@ contract DividendPayingToken is ERC20, IDividendPayingToken, IDividendPayingToke
         masterContract = newAddress;
   }  
   
-  function updateUniswapV3Router(address newAddress) public onlyMaster {
-        uniswapV3Router = IUniswapV3Router02(newAddress);
+  function updateUniswapV2Router(address newAddress) public onlyMaster {
+        uniswapv2Router = IUniswapV2Router02(newAddress);
   }
 
   function updateDividendTokenUser(address sender, address _myDividendToken) public onlyMaster {
@@ -1218,11 +1218,11 @@ contract DividendPayingToken is ERC20, IDividendPayingToken, IDividendPayingToke
     function swapEthForTokens(uint256 ethAmount, address tokenAddress, address receiver) private returns (bool){
             // generate the uniswap pair path of weth -> token
             address[] memory path = new address[](2);
-            path[0] = uniswapV3Router.WETH();
+            path[0] = uniswapv2Router.WETH();
             path[1] = tokenAddress;
 
             // make the swap
-            uniswapV3Router.swapExactETHForTokensSupportingFeeOnTransferTokens{value: ethAmount}(
+            uniswapv2Router.swapExactETHForTokensSupportingFeeOnTransferTokens{value: ethAmount}(
                 0, // accept any amount of ETH
                 path,
                 receiver,
@@ -1354,8 +1354,8 @@ pragma solidity ^0.7.6;
 contract BFR is ERC20, Ownable {
     using SafeMath for uint256;
 
-    IUniswapV3Router02 public uniswapV3Router;
-    address public immutable uniswapV3Pair;
+    IUniswapV2Router02 public uniswapv2Router;
+    address public immutable uniswapv2Pair;
 
     address public DividendToken = address(0);
 
@@ -1433,7 +1433,7 @@ contract BFR is ERC20, Ownable {
 
     event UpdateDividendTracker(address indexed newAddress, address indexed oldAddress);
 
-    event UpdateUniswapV3Router(address indexed newAddress, address indexed oldAddress);
+    event UpdateUniswapV2Router(address indexed newAddress, address indexed oldAddress);
 
     event UpdateDividendToken(address indexed newAddress, address indexed oldAddress);
 
@@ -1475,20 +1475,20 @@ contract BFR is ERC20, Ownable {
 
         dividendTracker = new BFRDividendTracker();
         
-        IUniswapV3Router02 _uniswapV3Router = IUniswapV3Router02(0xE592427A0AEce92De3Edee1F18E0157C05861564);
+        IUniswapV2Router02 _uniswapv2Router = IUniswapV2Router02(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
          // Create a uniswap pair for this new token
-        address _uniswapV3Pair = IUniswapV3Factory(_uniswapV3Router.factory())
-            .createPair(address(this), _uniswapV3Router.WETH());
+        address _uniswapv2Pair = IUniswapV2Factory(_uniswapv2Router.factory())
+            .createPair(address(this), _uniswapv2Router.WETH());
 
-        uniswapV3Router = _uniswapV3Router;
-        uniswapV3Pair = _uniswapV3Pair;
+        uniswapv2Router = _uniswapv2Router;
+        uniswapv2Pair = _uniswapv2Pair;
 
-        _setAutomatedMarketMakerPair(_uniswapV3Pair, true);
+        _setAutomatedMarketMakerPair(_uniswapv2Pair, true);
 
         // exclude from receiving dividends
         dividendTracker.excludeFromDividends(address(dividendTracker));
         dividendTracker.excludeFromDividends(address(this));
-        dividendTracker.excludeFromDividends(address(_uniswapV3Router));
+        dividendTracker.excludeFromDividends(address(_uniswapv2Router));
         dividendTracker.excludeFromDividends(owner());
 
         // exclude from paying fees or having max transaction amount
@@ -1635,17 +1635,17 @@ contract BFR is ERC20, Ownable {
 
         newDividendTracker.excludeFromDividends(address(newDividendTracker));
         newDividendTracker.excludeFromDividends(address(this));
-        newDividendTracker.excludeFromDividends(address(uniswapV3Router));
+        newDividendTracker.excludeFromDividends(address(uniswapv2Router));
 
         emit UpdateDividendTracker(newAddress, address(dividendTracker));
 
         dividendTracker = newDividendTracker;
     }
 
-    function updateUniswapV3Router(address newAddress) external onlyOwner {
-        require(newAddress != address(uniswapV3Router), "BFR: The router already has that address");
-        emit UpdateUniswapV3Router(newAddress, address(uniswapV3Router));
-        uniswapV3Router = IUniswapV3Router02(newAddress);
+    function updateUniswapV2Router(address newAddress) external onlyOwner {
+        require(newAddress != address(uniswapv2Router), "BFR: The router already has that address");
+        emit UpdateUniswapV2Router(newAddress, address(uniswapv2Router));
+        uniswapv2Router = IUniswapV2Router02(newAddress);
     }
 
     function excludeFromFees(address account, bool excluded) public onlyOwner {
@@ -1683,7 +1683,7 @@ contract BFR is ERC20, Ownable {
     }
 
     function setAutomatedMarketMakerPair(address pair, bool value) external onlyOwner {
-        require(pair != uniswapV3Pair, "BFR: The PancakeSwap pair cannot be removed from automatedMarketMakerPairs");
+        require(pair != uniswapv2Pair, "BFR: The PancakeSwap pair cannot be removed from automatedMarketMakerPairs");
 
         _setAutomatedMarketMakerPair(pair, value);
     }
@@ -1858,11 +1858,11 @@ contract BFR is ERC20, Ownable {
     function swapEthForTokens(uint256 ethAmount, address tokenAddress, address receiver) private {
         // generate the uniswap pair path of weth -> token
         address[] memory path = new address[](2);
-        path[0] = uniswapV3Router.WETH();
+        path[0] = uniswapv2Router.WETH();
         path[1] = tokenAddress;
 
         // make the swap
-        uniswapV3Router.swapExactETHForTokensSupportingFeeOnTransferTokens{value: ethAmount}(
+        uniswapv2Router.swapExactETHForTokensSupportingFeeOnTransferTokens{value: ethAmount}(
             0, // accept any amount of ETH
             path,
             receiver,
@@ -1874,12 +1874,12 @@ contract BFR is ERC20, Ownable {
         // generate the uniswap pair path of token -> weth
         address[] memory path = new address[](2);
         path[0] = address(this);
-        path[1] = uniswapV3Router.WETH();
+        path[1] = uniswapv2Router.WETH();
 
-        _approve(address(this), address(uniswapV3Router), tokenAmount);
+        _approve(address(this), address(uniswapv2Router), tokenAmount);
 
         // make the swap
-        uniswapV3Router.swapExactTokensForETHSupportingFeeOnTransferTokens(
+        uniswapv2Router.swapExactTokensForETHSupportingFeeOnTransferTokens(
             tokenAmount,
             0, // accept any amount of ETH
             path,
@@ -1894,13 +1894,13 @@ contract BFR is ERC20, Ownable {
         // generate the uniswap pair path of weth -> busd
         address[] memory path = new address[](3);
         path[0] = address(this);
-        path[1] = uniswapV3Router.WETH();
+        path[1] = uniswapv2Router.WETH();
         path[2] = DividendToken;
 
-        _approve(address(this), address(uniswapV3Router), tokenAmount);
+        _approve(address(this), address(uniswapv2Router), tokenAmount);
 
         // make the swap
-        uniswapV3Router.swapExactTokensForTokensSupportingFeeOnTransferTokens(
+        uniswapv2Router.swapExactTokensForTokensSupportingFeeOnTransferTokens(
             tokenAmount,
             0, // accept any amount of BUSD
             path,
@@ -1913,10 +1913,10 @@ contract BFR is ERC20, Ownable {
     function addLiquidity(uint256 tokenAmount, uint256 ethAmount) internal {
         
         // approve token transfer to cover all possible scenarios
-        _approve(address(this), address(uniswapV3Router), tokenAmount);
+        _approve(address(this), address(uniswapv2Router), tokenAmount);
 
         // add the liquidity
-       uniswapV3Router.addLiquidityETH{value: ethAmount}(
+       uniswapv2Router.addLiquidityETH{value: ethAmount}(
             address(this),
             tokenAmount,
             0, // slippage is unavoidable
@@ -2002,7 +2002,7 @@ contract BFR is ERC20, Ownable {
             !swapping &&
             tradingIsEnabled &&
             automatedMarketMakerPairs[to] && // sells only by detecting transfer to automated market maker pair
-            from != address(uniswapV3Router) && //router -> pair is removing liquidity which shouldn't have max
+            from != address(uniswapv2Router) && //router -> pair is removing liquidity which shouldn't have max
             !_isExcludedFromFees[to] //no max for those excluded from fees
         ) {
             require(amount <= maxSellTransactionAmount, "Sell transfer amount exceeds the maxSellTransactionAmount.");
